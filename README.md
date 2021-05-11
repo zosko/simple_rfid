@@ -6,3 +6,5 @@ Components:
 - Arduino Pro Micro
 
 ![scheme](scheme.png)
+
+![photo](photo.jpg)

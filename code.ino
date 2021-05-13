@@ -1,10 +1,9 @@
 #include <EEPROM.h>
-//#define DEBUG
 
 //PINS
-int MEMORY_CARD = 0;
+int LAST_CARD_USED = 100;
 int BUTTON_CLONE_CARD = 4;
-int BUTTON_POWER_READER = 7;
+int POWER_READER = 7;
 int COIL_PIN = 9;
 
 //EMULATION
@@ -14,44 +13,6 @@ uint32_t card_generated;
 bool id_is_valid = false;
 unsigned long long current_id;
 unsigned char received_checksum;
-
-void setup() {
-  #ifdef DEBUG
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
-  #endif
-
-  Serial1.begin(9600);
-  
-  pinMode(BUTTON_CLONE_CARD, INPUT_PULLUP);
-  pinMode(BUTTON_POWER_READER, OUTPUT);
-  pinMode(COIL_PIN, OUTPUT);
-
-  digitalWrite(COIL_PIN, LOW);
-
-  if (digitalRead(BUTTON_CLONE_CARD) == LOW) {
-    #ifdef DEBUG
-    Serial.println("WAITING CARD TO CLONE...");
-    #endif
-    cloneCard();
-  }
-  else {
-    uint64_t card = EEPROMReadlong(MEMORY_CARD);
-    card_generated = generate_card(card);
-
-    #ifdef DEBUG
-    Serial.print("EMULATE CARD: ");
-    print_int64(card);
-    #endif
-
-    TXLED1;
-  }
-}
-void loop() {
-  emulateCard(card_generated);
-}
 
 // EEPROM FUNCTIONS
 void EEPROMWritelong(int address, uint64_t value) {
@@ -100,13 +61,6 @@ uint32_t generate_card(uint64_t Hex_IDCard) {
   }
   data_card[63] = 0;
 
-  #ifdef DEBUG
-  Serial.print("BINARY CARD: ");
-  for (int i = 0; i < 63; i++) {
-    Serial.print(data_card[i]);
-  }
-  Serial.println();
-  #endif
   return data_card;
 }
 void emulateCard(uint32_t *data) {
@@ -120,27 +74,44 @@ void emulateCard(uint32_t *data) {
 }
 
 // HELPER FUNCTIONS
-void cloneCard() {
+void blinkEnterMenu() {
+  RXLED0; TXLED0;
+  delay(500);
+  for (int i = 0 ; i < 10; i++) {
+    delay(200);
+    RXLED1; TXLED0;
+    delay(200);
+    RXLED0; TXLED1;
+  }
+  delay(500);
+  RXLED0; TXLED0;
+}
+void cardSelected(int card) {
+  RXLED0; TXLED0;
+  delay(500);
+  for (int i = 0 ; i < card; i++) {
+    delay(500);
+    RXLED1; TXLED1;
+    delay(500);
+    RXLED0; TXLED0;
+  }
+  delay(500);
+  RXLED0; TXLED0;
+}
+void cloneCard(int cardLocation) {
   delay(1000); RXLED1;
-  
-  digitalWrite(BUTTON_POWER_READER, HIGH);
+
+  digitalWrite(POWER_READER, HIGH);
 
   while (0000000000 != readCard()) {
-    EEPROMWritelong(MEMORY_CARD, readCard());
-
-    uint64_t card = EEPROMReadlong(MEMORY_CARD);
-    card_generated = generate_card(card);
-    #ifdef DEBUG
-    Serial.print("CARD CLONED: ");
-    print_int64(card);
-    #endif
-    
+    EEPROMWritelong(cardLocation * 10, readCard());
+    print_int64("CARD CLONED: ", readCard());
     break;
   }
 
-  digitalWrite(BUTTON_POWER_READER, LOW);
+  digitalWrite(POWER_READER, LOW);
 
-  RXLED0; TXLED1;
+  RXLED0;
 }
 
 // RDM6300 FUNCTIONS
@@ -210,7 +181,8 @@ int get_checksum(unsigned long long data) {
   tmp.ul = data;
   return tmp.uc[0] ^ tmp.uc[1] ^ tmp.uc[2] ^ tmp.uc[3] ^ tmp.uc[4];
 }
-void print_int64(unsigned long long data) {
+void print_int64(char *text, unsigned long long data) {
+  Serial.print(text);
   union {
     unsigned long long ull;
     unsigned long ul[2];
@@ -226,4 +198,67 @@ void print_int64(unsigned long long data) {
     beacon >>= 4;
   }
   Serial.println(tmp.ul[0], HEX);
+}
+
+//MAIN CODE
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
+  Serial1.begin(9600);
+
+  pinMode(BUTTON_CLONE_CARD, INPUT_PULLUP);
+  pinMode(POWER_READER, OUTPUT);
+  pinMode(COIL_PIN, OUTPUT);
+
+  digitalWrite(COIL_PIN, LOW);
+
+  bool buttonMenuPressed = digitalRead(BUTTON_CLONE_CARD) == LOW;
+  if (buttonMenuPressed) {
+    bool inMenu = true;
+    float pressLength = 0;
+    int card_selected = 1;
+    blinkEnterMenu();
+    delay(3000);
+    while (inMenu) {
+      while (digitalRead(BUTTON_CLONE_CARD) == LOW) {
+        delay(100);
+        pressLength = pressLength + 100;
+        Serial.print("PRESSED LENGTH: ");
+        Serial.println(pressLength);
+      }
+
+      if (pressLength >= 1000) { // clone card
+        Serial.println("PREPARE TO CLONE CARD");
+        cloneCard(card_selected);
+        inMenu = false;
+      }
+      else if (pressLength >= 200 && pressLength <= 1000) {
+        if (card_selected++ > 4) {
+          card_selected = 1;
+        }
+        cardSelected(card_selected);
+        Serial.print("CARD SELECTED: ");
+        Serial.println(card_selected);
+        EEPROMWritelong(LAST_CARD_USED, card_selected);
+      }
+
+      pressLength = 0;
+    }
+  }
+
+  int card_selected = EEPROMReadlong(LAST_CARD_USED);
+  uint64_t card_id = EEPROMReadlong(card_selected * 10);
+  card_generated = generate_card(card_id);
+  Serial.print("LAST CARD USED: ");
+  Serial.println(card_selected);
+  print_int64("EMULATE CARD: ", card_id);
+
+  delay(1000);
+  TXLED1;
+
+}
+void loop() {
+  emulateCard(card_generated);
 }

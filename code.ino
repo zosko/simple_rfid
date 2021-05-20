@@ -203,9 +203,6 @@ void print_int64(char *text, unsigned long long data) {
 //MAIN CODE
 void setup() {
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
   Serial1.begin(9600);
 
   pinMode(BUTTON_CLONE_CARD, INPUT_PULLUP);

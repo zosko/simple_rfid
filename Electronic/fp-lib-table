@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "RDM6300")(type "KiCad")(uri "${KIPRJMOD}/Library/RDM6300")(options "")(descr ""))
+)

@@ -7,4 +7,4 @@ Components:
 
 ![scheme](scheme.png)
 
-![photo](photo.jpg)
+![pcb](pcb.png)

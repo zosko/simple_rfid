@@ -1,15 +1,3 @@
-#include <EEPROM.h>
-
-uint64_t EEPROMReadlong(int address) {
-  uint64_t card = 0;
-  for (int i = address, b = 0; i < address + 10; i++, b++) {
-    uint64_t tmp = EEPROM.read(i);
-    tmp = tmp << (36 - b * 4);
-    card |= tmp;
-  }
-  return card;
-}
-
 void print_int64(char *text, unsigned long long data) {
   Serial.print(text);
   union {
@@ -29,10 +17,9 @@ void print_int64(char *text, unsigned long long data) {
   Serial.println(tmp.ul[0], HEX);
 }
 
-void setup() {
-  Serial.begin(9600);
-
-  Serial.println("COMMANDS: ");
+void intro() {
+  Serial.println("");
+  Serial.println("WRITE COMMAND BEFORE YOU PRESS 'CLONE' BUTTON");
   Serial.println("    'l' - list saved cards");
   Serial.println("    'c' - clear saved cards");
 }
@@ -56,17 +43,5 @@ void list() {
     Serial.print("] : ");
     uint64_t card_id = EEPROMReadlong(i * 10);
     print_int64("EMULATE CARD: ", card_id);
-  }
-}
-
-void loop() {
-  if (Serial.available()) {
-    char command = Serial.read();
-    if (command == 'l') {
-      list();
-    }
-    if (command == 'c') {
-      clear();
-    }
   }
 }

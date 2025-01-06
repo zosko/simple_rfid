@@ -19,6 +19,8 @@ unsigned char received_checksum;
 void setup() {
   Serial.begin(9600);
 
+  intro();
+
   pinMode(BUTTON_CLONE_CARD, INPUT);
   pinMode(POWER_READER, OUTPUT);
   pinMode(COIL_PIN, OUTPUT);
@@ -34,20 +36,32 @@ void loop() {
 
   if (buttonMenuPressed) {
     digitalWrite(LED_BUILTIN, HIGH);
-    int lastSavedLocation = EEPROMReadlong(LAST_CARD_USED);
-    bool isCloned = cloneCard(lastSavedLocation);
-    if (isCloned) {
-      lastSavedLocation++;
-      if (lastSavedLocation > 4) {
-        lastSavedLocation = 4;
+    if (Serial.available()) {
+      char command = Serial.read();
+      if (command == 'l') {
+        list();
       }
-      EEPROMWritelong(LAST_CARD_USED, lastSavedLocation);
+      if (command == 'c') {
+        clear();
+      }
 
-      for (int i = 0; i < 5; i++) {
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(300);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(300);
+      digitalWrite(LED_BUILTIN, LOW);
+    } else {
+      int lastSavedLocation = EEPROMReadlong(LAST_CARD_USED);
+      bool isCloned = cloneCard(lastSavedLocation);
+      if (isCloned) {
+        lastSavedLocation++;
+        if (lastSavedLocation > 4) {
+          lastSavedLocation = 4;
+        }
+        EEPROMWritelong(LAST_CARD_USED, lastSavedLocation);
+
+        for (int i = 0; i < 5; i++) {
+          digitalWrite(LED_BUILTIN, HIGH);
+          delay(300);
+          digitalWrite(LED_BUILTIN, LOW);
+          delay(300);
+        }
       }
     }
   }

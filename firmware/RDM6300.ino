@@ -1,7 +1,7 @@
 unsigned long long readCard() {
   while (!id_is_valid) {
-    while (Serial1.available() > 0) {
-      parse(Serial1.read());
+    while (Serial.available() > 0) {
+      parse(Serial.read());
     }
   }
   id_is_valid = false;

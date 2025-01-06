@@ -44,7 +44,6 @@ bool cloneCard(int cardLocation) {
 
   while (0000000000 != readCard()) {
     EEPROMWritelong(cardLocation * 10, readCard());
-    print_int64("CARD CLONED: ", readCard());
     isCloned = true;
     break;
   }
